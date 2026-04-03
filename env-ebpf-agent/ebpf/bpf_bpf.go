@@ -12,16 +12,14 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type BpfIpPortKey struct {
-	_    structs.HostLayout
-	Ip   uint32
-	Port uint32
-}
-
 type BpfTuningAction struct {
 	_             structs.HostLayout
 	MaxPacingRate uint32
 	SndCwndClamp  uint32
+	CongAlgo      uint32
+	InitCwnd      uint32
+	WindowClamp   uint32
+	NoDelay       uint32
 }
 
 type BpfTuningMetrics struct {
@@ -32,6 +30,8 @@ type BpfTuningMetrics struct {
 	BytesReceived uint64
 	StartTimeNs   uint64
 	DurationUs    uint64
+	RemoteIp4     uint32
+	RemotePort    uint32
 }
 
 // LoadBpf returns the embedded CollectionSpec for Bpf.
@@ -76,15 +76,18 @@ type BpfSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfProgramSpecs struct {
-	BpfSockmap *ebpf.ProgramSpec `ebpf:"bpf_sockmap"`
+	BpfConnect4 *ebpf.ProgramSpec `ebpf:"bpf_connect4"`
+	BpfSockmap  *ebpf.ProgramSpec `ebpf:"bpf_sockmap"`
 }
 
 // BpfMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfMapSpecs struct {
-	ActionMap  *ebpf.MapSpec `ebpf:"action_map"`
-	MetricsMap *ebpf.MapSpec `ebpf:"metrics_map"`
+	ActionMap       *ebpf.MapSpec `ebpf:"action_map"`
+	CookieTargetMap *ebpf.MapSpec `ebpf:"cookie_target_map"`
+	InfectionMap    *ebpf.MapSpec `ebpf:"infection_map"`
+	MetricsMap      *ebpf.MapSpec `ebpf:"metrics_map"`
 }
 
 // BpfVariableSpecs contains global variables before they are loaded into the kernel.
@@ -113,13 +116,17 @@ func (o *BpfObjects) Close() error {
 //
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfMaps struct {
-	ActionMap  *ebpf.Map `ebpf:"action_map"`
-	MetricsMap *ebpf.Map `ebpf:"metrics_map"`
+	ActionMap       *ebpf.Map `ebpf:"action_map"`
+	CookieTargetMap *ebpf.Map `ebpf:"cookie_target_map"`
+	InfectionMap    *ebpf.Map `ebpf:"infection_map"`
+	MetricsMap      *ebpf.Map `ebpf:"metrics_map"`
 }
 
 func (m *BpfMaps) Close() error {
 	return _BpfClose(
 		m.ActionMap,
+		m.CookieTargetMap,
+		m.InfectionMap,
 		m.MetricsMap,
 	)
 }
@@ -134,11 +141,13 @@ type BpfVariables struct {
 //
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfPrograms struct {
-	BpfSockmap *ebpf.Program `ebpf:"bpf_sockmap"`
+	BpfConnect4 *ebpf.Program `ebpf:"bpf_connect4"`
+	BpfSockmap  *ebpf.Program `ebpf:"bpf_sockmap"`
 }
 
 func (p *BpfPrograms) Close() error {
 	return _BpfClose(
+		p.BpfConnect4,
 		p.BpfSockmap,
 	)
 }

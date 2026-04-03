@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"strings"
 	"time"
 )
 
 type Executor struct {
 	lastCommand string
+	LastPID     int
 }
 
 func NewExecutor() *Executor {
@@ -19,29 +19,33 @@ func NewExecutor() *Executor {
 // SetCommand stores the command for the current episode
 func (e *Executor) SetCommand(cmdStr string) {
 	e.lastCommand = cmdStr
+	e.LastPID = 0
 }
 
-// Run executes the currently configured command synchronously and waits for it to complete.
-func (e *Executor) Run(ctx context.Context) error {
+// Start launches the command and returns immediately, exposing the PID.
+func (e *Executor) Start(ctx context.Context) (*exec.Cmd, error) {
 	if e.lastCommand == "" {
-		return fmt.Errorf("no command set")
+		return nil, fmt.Errorf("no command set")
 	}
 
-	parts := strings.Fields(e.lastCommand)
-	if len(parts) == 0 {
-		return fmt.Errorf("empty command")
+	// Use bash -c to support shell operators like &&, |, etc.
+	// We use a generous 60s timeout for benchmarks like git clone.
+	runCtx, _ := context.WithTimeout(ctx, 60*time.Second)
+
+	cmd := exec.CommandContext(runCtx, "bash", "-c", e.lastCommand)
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("command start failed: %w", err)
 	}
 
-	// Adding a small timeout bound to network commands to avoid hanging forever
-	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
+	e.LastPID = cmd.Process.Pid
+	return cmd, nil
+}
 
-	cmd := exec.CommandContext(runCtx, parts[0], parts[1:]...)
-	
-	// We run it and wait. We discard output since this is just an environment trigger
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("command execution failed: %w", err)
+// Run executes the command synchronously (used for baseline Reset runs without actions)
+func (e *Executor) Run(ctx context.Context) error {
+	cmd, err := e.Start(ctx)
+	if err != nil {
+		return err
 	}
-
-	return nil
+	return cmd.Wait()
 }

@@ -70,6 +70,7 @@ func (s *Server) Step(ctx context.Context, req *pb.StepRequest) (*pb.StepRespons
 			TotalRetrans:  metrics.TotalRetrans,
 			BytesSent:     metrics.BytesSent,
 			BytesReceived: metrics.BytesReceived,
+			DurationUs:    metrics.DurationUs,
 		},
 	}, nil
 }

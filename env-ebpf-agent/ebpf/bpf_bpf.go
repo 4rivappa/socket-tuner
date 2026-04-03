@@ -30,6 +30,8 @@ type BpfTuningMetrics struct {
 	TotalRetrans  uint32
 	BytesSent     uint64
 	BytesReceived uint64
+	StartTimeNs   uint64
+	DurationUs    uint64
 }
 
 // LoadBpf returns the embedded CollectionSpec for Bpf.

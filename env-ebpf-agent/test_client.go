@@ -50,12 +50,13 @@ func main() {
 
 	fmt.Printf("Step done: %v\n", sResp.Done)
 	if sResp.Observation != nil {
-		fmt.Printf("\n--- EXTRACRED eBPF KERNEL METRICS ---\n")
+		fmt.Printf("\n--- EXTRACTED eBPF KERNEL METRICS ---\n")
 		fmt.Printf("Remote IP:   %s:%d\n", sResp.Observation.RemoteIp, sResp.Observation.RemotePort)
 		fmt.Printf("Bytes Sent:  %d\n", sResp.Observation.BytesSent)
 		fmt.Printf("Bytes Recv:  %d\n", sResp.Observation.BytesReceived)
 		fmt.Printf("SRTT:        %d us (%.3f ms)\n", sResp.Observation.SrttUs, float64(sResp.Observation.SrttUs)/1000.0)
 		fmt.Printf("Retransmits: %d\n", sResp.Observation.TotalRetrans)
+		fmt.Printf("Duration:    %d us (%.3f ms)\n", sResp.Observation.DurationUs, float64(sResp.Observation.DurationUs)/1000.0)
 		fmt.Printf("-------------------------------------\n")
 	} else {
 		fmt.Println("No observation returned.")

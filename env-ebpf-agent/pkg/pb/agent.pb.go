@@ -268,6 +268,7 @@ type Observation struct {
 	TotalRetrans  uint32 `protobuf:"varint,5,opt,name=total_retrans,json=totalRetrans,proto3" json:"total_retrans,omitempty"`    // Total retransmissions
 	BytesSent     uint64 `protobuf:"varint,6,opt,name=bytes_sent,json=bytesSent,proto3" json:"bytes_sent,omitempty"`             // Total bytes sent
 	BytesReceived uint64 `protobuf:"varint,7,opt,name=bytes_received,json=bytesReceived,proto3" json:"bytes_received,omitempty"` // Total bytes received
+	DurationUs    uint64 `protobuf:"varint,8,opt,name=duration_us,json=durationUs,proto3" json:"duration_us,omitempty"`          // Connection duration in microseconds
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -351,6 +352,13 @@ func (x *Observation) GetBytesReceived() uint64 {
 	return 0
 }
 
+func (x *Observation) GetDurationUs() uint64 {
+	if x != nil {
+		return x.DurationUs
+	}
+	return 0
+}
+
 var File_agent_proto protoreflect.FileDescriptor
 
 const file_agent_proto_rawDesc = "" +
@@ -373,7 +381,7 @@ const file_agent_proto_rawDesc = "" +
 	"\x0esnd_cwnd_clamp\x18\x05 \x01(\rR\fsndCwndClamp\"X\n" +
 	"\fStepResponse\x12\x12\n" +
 	"\x04done\x18\x01 \x01(\bR\x04done\x124\n" +
-	"\vobservation\x18\x02 \x01(\v2\x12.agent.ObservationR\vobservation\"\xe8\x01\n" +
+	"\vobservation\x18\x02 \x01(\v2\x12.agent.ObservationR\vobservation\"\x89\x02\n" +
 	"\vObservation\x12\x1b\n" +
 	"\tremote_ip\x18\x01 \x01(\tR\bremoteIp\x12\x1f\n" +
 	"\vremote_port\x18\x02 \x01(\rR\n" +
@@ -383,7 +391,9 @@ const file_agent_proto_rawDesc = "" +
 	"\rtotal_retrans\x18\x05 \x01(\rR\ftotalRetrans\x12\x1d\n" +
 	"\n" +
 	"bytes_sent\x18\x06 \x01(\x04R\tbytesSent\x12%\n" +
-	"\x0ebytes_received\x18\a \x01(\x04R\rbytesReceived2o\n" +
+	"\x0ebytes_received\x18\a \x01(\x04R\rbytesReceived\x12\x1f\n" +
+	"\vduration_us\x18\b \x01(\x04R\n" +
+	"durationUs2o\n" +
 	"\bEnvAgent\x122\n" +
 	"\x05Reset\x12\x13.agent.ResetRequest\x1a\x14.agent.ResetResponse\x12/\n" +
 	"\x04Step\x12\x12.agent.StepRequest\x1a\x13.agent.StepResponseB'Z%socket-tuner/env-ebpf-agent/pkg/pb;pbb\x06proto3"

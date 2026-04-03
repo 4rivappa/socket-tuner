@@ -28,6 +28,8 @@ struct tuning_metrics {
     __u32 total_retrans;
     __u64 bytes_sent;
     __u64 bytes_received;
+    __u64 start_time_ns;
+    __u64 duration_us;
 };
 
 // Map: Target IP (IPv4) : Port (v4) -> tuning_action
@@ -66,6 +68,10 @@ static __always_inline void update_metrics(struct bpf_sock_ops *skops) {
     met->total_retrans = skops->total_retrans;
     met->bytes_sent = skops->bytes_acked;
     met->bytes_received = skops->bytes_received;
+
+    if (met->start_time_ns > 0) {
+        met->duration_us = (bpf_ktime_get_ns() - met->start_time_ns) / 1000;
+    }
 }
 
 SEC("sockops")
@@ -92,6 +98,7 @@ int bpf_sockmap(struct bpf_sock_ops *skops)
                 }
 
                 struct tuning_metrics initial = {};
+                initial.start_time_ns = bpf_ktime_get_ns();
                 bpf_map_update_elem(&metrics_map, &key, &initial, BPF_ANY);
             }
             // Enable callbacks for state changes (e.g. TCP close) to grab final stats

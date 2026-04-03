@@ -52,4 +52,5 @@ message Observation {
     uint32 total_retrans = 5;  // Total retransmissions
     uint64 bytes_sent = 6;     // Total bytes sent
     uint64 bytes_received = 7; // Total bytes received
+    uint64 duration_us = 8;    // Connection duration in microseconds
 }

@@ -90,36 +90,16 @@ func (m *Manager) GetMetrics(ip string, port uint32) (*ebpf.BpfTuningMetrics, er
 	return &metrics, nil
 }
 
-// GetLatestMetric iterates through all metrics and returns the most recently updated one
-func (m *Manager) GetLatestMetric() (*ebpf.BpfTuningMetrics, string, uint32, error) {
-	var maxTime uint64
-	var latestMetric ebpf.BpfTuningMetrics
-	var latestKey ebpf.BpfIpPortKey
-	found := false
-
-	var key ebpf.BpfIpPortKey
+// GetMetricForPid looks up exact metric payload for a specific process ID
+func (m *Manager) GetMetricForPid(pid uint32) (*ebpf.BpfTuningMetrics, string, uint32, error) {
 	var metric ebpf.BpfTuningMetrics
-	iter := m.objs.MetricsMap.Iterate()
-	for iter.Next(&key, &metric) {
-		if metric.StartTimeNs >= maxTime {
-			maxTime = metric.StartTimeNs
-			latestMetric = metric
-			latestKey = key
-			found = true
-		}
-	}
-	if err := iter.Err(); err != nil {
-		return nil, "", 0, fmt.Errorf("failed to iterate metrics map: %w", err)
-	}
-
-	if !found {
-		return nil, "", 0, fmt.Errorf("no metrics found")
+	if err := m.objs.MetricsMap.Lookup(&pid, &metric); err != nil {
+		return nil, "", 0, fmt.Errorf("no metric found for PID %d: %w", pid, err)
 	}
 
 	ipBytes := make([]byte, 4)
-	binary.LittleEndian.PutUint32(ipBytes, latestKey.Ip)
+	binary.LittleEndian.PutUint32(ipBytes, metric.RemoteIp)
 	ipStr := net.IP(ipBytes).String()
 
-	return &latestMetric, ipStr, latestKey.Port, nil
+	return &metric, ipStr, metric.RemotePort, nil
 }
-

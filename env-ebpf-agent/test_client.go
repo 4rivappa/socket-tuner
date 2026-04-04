@@ -21,12 +21,13 @@ func main() {
 
 	client := pb.NewEnvAgentClient(conn)
 
-	// Cloudflare standard IP that supports HTTP HEAD
-	targetIP := "1.1.1.1"
-
+	// Execute an arbitrary network command
 	fmt.Println("=== 1. Resetting Environment ===")
 	rResp, err := client.Reset(context.Background(), &pb.ResetRequest{
-		Command: fmt.Sprintf("curl -sI -m 5 http://%s", targetIP),
+		// Command: "curl -sI -m 5 https://google.com",
+		// Command: "curl -o /dev/null https://ash-speed.hetzner.com/1GB.bin",
+		Command: "curl -o /dev/null https://github.com/torvalds/linux/archive/refs/tags/v7.0-rc6.tar.gz",
+		// Command: "git clone --depth=0 https://github.com/kubernetes/kubernetes.git",
 	})
 	if err != nil {
 		log.Fatalf("Reset failed: %v", err)
@@ -44,17 +45,21 @@ func main() {
 
 	time.Sleep(1 * time.Second)
 
+	dynamicIp := rResp.InitialObservation.RemoteIp
+	dynamicPort := rResp.InitialObservation.RemotePort
+
 	fmt.Println("\n=== 2. Stepping Environment (with strict eBPF Pacing Limit) ===")
 	// Assuming 100KB/s pacing rate
 	sResp, err := client.Step(context.Background(), &pb.StepRequest{
 		SessionId:     "test-session",
-		TargetIp:      targetIP,
-		TargetPort:    80,
-		MaxPacingRate: 50 * 1024, // 50 KB/s pacing
+		TargetIp:      dynamicIp,
+		TargetPort:    dynamicPort,
+		MaxPacingRate: 0,
 		SndCwndClamp:  0,
-		CongAlgo:      2, // BBR
-		InitCwnd:      20,
-		NoDelay:       1,
+		CongAlgo:      1, // Cubic
+		InitCwnd:      0,
+		WindowClamp:   33554432, // Large 32MB window
+		NoDelay:       0,
 	})
 	if err != nil {
 		log.Fatalf("Step failed: %v", err)

@@ -21,15 +21,15 @@ func (e *Executor) SetCommand(cmdStr string) {
 	e.lastCommand = cmdStr
 }
 
-// Run executes the currently configured command synchronously and waits for it to complete.
-func (e *Executor) Run(ctx context.Context) error {
+// Run executes the currently configured command synchronously and waits for it to complete, returning its PID.
+func (e *Executor) Run(ctx context.Context) (uint32, error) {
 	if e.lastCommand == "" {
-		return fmt.Errorf("no command set")
+		return 0, fmt.Errorf("no command set")
 	}
 
 	parts := strings.Fields(e.lastCommand)
 	if len(parts) == 0 {
-		return fmt.Errorf("empty command")
+		return 0, fmt.Errorf("empty command")
 	}
 
 	// Adding a small timeout bound to network commands to avoid hanging forever
@@ -38,10 +38,15 @@ func (e *Executor) Run(ctx context.Context) error {
 
 	cmd := exec.CommandContext(runCtx, parts[0], parts[1:]...)
 	
-	// We run it and wait. We discard output since this is just an environment trigger
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("command execution failed: %w", err)
+	if err := cmd.Start(); err != nil {
+		return 0, fmt.Errorf("command start failed: %w", err)
+	}
+	
+	pid := uint32(cmd.Process.Pid)
+	
+	if err := cmd.Wait(); err != nil {
+		return pid, fmt.Errorf("command execution failed: %w", err)
 	}
 
-	return nil
+	return pid, nil
 }

@@ -13,7 +13,7 @@
 #endif
 
 #ifndef SO_MAX_PACING_RATE
-#define SO_MAX_PACING_RATE 47 // Defined in asm-generic/socket.h usually
+#define SO_MAX_PACING_RATE 47
 #endif
 
 #ifndef SOL_TCP
@@ -66,6 +66,8 @@ struct tuning_action {
 
 // Observation/Metrics tracked over a socket connection
 struct tuning_metrics {
+    __u32 remote_ip;
+    __u32 remote_port;
     __u32 srtt_us;
     __u32 total_retrans;
     __u64 bytes_sent;
@@ -91,17 +93,28 @@ struct {
 // BPF map to store outcome metrics to be polled by the Agent
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 1024);
-    __type(key, struct ip_port_key);
+    __uint(max_entries, 10240);
+    __type(key, __u32); // PID
     __type(value, struct tuning_metrics);
 } metrics_map SEC(".maps");
 
-static __always_inline void update_metrics(struct bpf_sock_ops *skops) {
-    struct ip_port_key key = {};
-    key.ip = skops->remote_ip4;
-    key.port = 0; // Ignore port
+// BPF map to map Socket Cookie -> PID
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 65536);
+    __type(key, __u64); // Socket Cookie
+    __type(value, __u32); // PID
+} cookie_pid_map SEC(".maps");
 
-    struct tuning_metrics *met = bpf_map_lookup_elem(&metrics_map, &key);
+static __always_inline void update_metrics(struct bpf_sock_ops *skops) {
+    __u64 cookie = bpf_get_socket_cookie(skops);
+    __u32 *pid_ptr = bpf_map_lookup_elem(&cookie_pid_map, &cookie);
+    if (!pid_ptr) {
+        return;
+    }
+    __u32 pid = *pid_ptr;
+
+    struct tuning_metrics *met = bpf_map_lookup_elem(&metrics_map, &pid);
     if (!met) {
         return;
     }
@@ -130,6 +143,18 @@ int bpf_sockmap(struct bpf_sock_ops *skops)
     key.port = 0; // Ignore port
 
     switch (op) {
+        case BPF_SOCK_OPS_TCP_CONNECT_CB: {
+            __u64 cookie = bpf_get_socket_cookie(skops);
+            __u32 pid = bpf_get_current_pid_tgid() >> 32;
+            bpf_map_update_elem(&cookie_pid_map, &cookie, &pid, BPF_ANY);
+
+            struct tuning_metrics initial = {};
+            initial.start_time_ns = bpf_ktime_get_ns();
+            initial.remote_ip = skops->remote_ip4;
+            initial.remote_port = skops->remote_port; 
+            bpf_map_update_elem(&metrics_map, &pid, &initial, BPF_ANY);
+            break;
+        }
         case BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB:
         case BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB: {
             // Socket established, let's see if we have an action for it.
@@ -174,11 +199,6 @@ int bpf_sockmap(struct bpf_sock_ops *skops)
                 }
             }
 
-            // Always track metrics to capture baselines as well
-            struct tuning_metrics initial = {};
-            initial.start_time_ns = bpf_ktime_get_ns();
-            bpf_map_update_elem(&metrics_map, &key, &initial, BPF_ANY);
-            
             // Enable callbacks for state changes (e.g. TCP close) to grab final stats
             bpf_sock_ops_cb_flags_set(skops, skops->bpf_sock_ops_cb_flags | BPF_SOCK_OPS_STATE_CB_FLAG);
             break;

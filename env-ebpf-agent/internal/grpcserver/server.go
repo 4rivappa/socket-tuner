@@ -30,12 +30,13 @@ func (s *Server) Reset(ctx context.Context, req *pb.ResetRequest) (*pb.ResetResp
 	s.executor.SetCommand(req.Command)
 	
 	// Execute it once as a baseline without specific eBPF parameters.
-	if err := s.executor.Run(ctx); err != nil {
+	pid, err := s.executor.Run(ctx)
+	if err != nil {
 		log.Printf("Baseline command execution failed: %v", err)
 		return &pb.ResetResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	metric, ipStr, port, err := s.manager.GetLatestMetric()
+	metric, ipStr, port, err := s.manager.GetMetricForPid(pid)
 	var obs *pb.Observation
 	if err == nil && metric != nil {
 		obs = &pb.Observation{
@@ -82,27 +83,28 @@ func (s *Server) Step(ctx context.Context, req *pb.StepRequest) (*pb.StepRespons
 	}
 	
 	// 2. Re-trigger the network task
-	if err := s.executor.Run(ctx); err != nil {
+	pid, err := s.executor.Run(ctx)
+	if err != nil {
 		log.Printf("Command execution failed during step: %v", err)
 	}
 	
 	// 3. Collect the resulting BPF metrics
-	metrics, err := s.manager.GetMetrics(req.TargetIp, req.TargetPort)
+	metric, ipStr, port, err := s.manager.GetMetricForPid(pid)
 	if err != nil {
-		log.Printf("Failed to get metrics: %v", err)
+		log.Printf("Failed to get metrics for PID %d: %v", pid, err)
 		return &pb.StepResponse{Done: true}, err
 	}
 	
 	return &pb.StepResponse{
 		Done: true,
 		Observation: &pb.Observation{
-			RemoteIp:      req.TargetIp,
-			RemotePort:    req.TargetPort,
-			SrttUs:        metrics.SrttUs,
-			TotalRetrans:  metrics.TotalRetrans,
-			BytesSent:     metrics.BytesSent,
-			BytesReceived: metrics.BytesReceived,
-			DurationUs:    metrics.DurationUs,
+			RemoteIp:      ipStr,
+			RemotePort:    port,
+			SrttUs:        metric.SrttUs,
+			TotalRetrans:  metric.TotalRetrans,
+			BytesSent:     metric.BytesSent,
+			BytesReceived: metric.BytesReceived,
+			DurationUs:    metric.DurationUs,
 		},
 	}, nil
 }

@@ -36,6 +36,8 @@ type BpfTuningAction struct {
 
 type BpfTuningMetrics struct {
 	_             structs.HostLayout
+	RemoteIp      uint32
+	RemotePort    uint32
 	SrttUs        uint32
 	TotalRetrans  uint32
 	BytesSent     uint64
@@ -93,8 +95,9 @@ type BpfProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfMapSpecs struct {
-	ActionMap  *ebpf.MapSpec `ebpf:"action_map"`
-	MetricsMap *ebpf.MapSpec `ebpf:"metrics_map"`
+	ActionMap    *ebpf.MapSpec `ebpf:"action_map"`
+	CookiePidMap *ebpf.MapSpec `ebpf:"cookie_pid_map"`
+	MetricsMap   *ebpf.MapSpec `ebpf:"metrics_map"`
 }
 
 // BpfVariableSpecs contains global variables before they are loaded into the kernel.
@@ -123,13 +126,15 @@ func (o *BpfObjects) Close() error {
 //
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfMaps struct {
-	ActionMap  *ebpf.Map `ebpf:"action_map"`
-	MetricsMap *ebpf.Map `ebpf:"metrics_map"`
+	ActionMap    *ebpf.Map `ebpf:"action_map"`
+	CookiePidMap *ebpf.Map `ebpf:"cookie_pid_map"`
+	MetricsMap   *ebpf.Map `ebpf:"metrics_map"`
 }
 
 func (m *BpfMaps) Close() error {
 	return _BpfClose(
 		m.ActionMap,
+		m.CookiePidMap,
 		m.MetricsMap,
 	)
 }

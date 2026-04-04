@@ -6,7 +6,7 @@ Each node contains eBPF agent and environment agent.
 One node will have a environment router, which will be responsible to route the traffic to the environment node agent.
 Environment agent will be responsible to generate traffic to the environment.
 
-RL Inference <-> EKS Cluster (environment router <-> environment agent <-> eBPF agent)
+RL Inference <-> EKS Cluster (environment router <-> environment agent + eBPF agent)
 This is the overall flow.
 
 ### RL Environment Steps

@@ -16,7 +16,7 @@ RUN go mod download
 COPY . .
 
 RUN make generate
-RUN CGO_ENABLED=0 GoOS=linux go build -o bin/env-router main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o bin/env-router main.go
 
 # --- RUNTIME STAGE ---
 FROM ubuntu:24.04
@@ -28,5 +28,12 @@ COPY --from=builder /app/bin/env-router /usr/local/bin/
 # Expose standard router port
 EXPOSE 50050
 
-# In Kubernetes, you will pass the agent comma-separated list of addresses via arguments
-ENTRYPOINT ["env-router", "-listen", ":50050"]
+# Configuration is provided via environment variables:
+#   AGENT_SERVICE_NAME      (required) - K8s service name for env-ebpf-agents
+#   AGENT_DEPLOYMENT_NAME   (required) - K8s deployment name to scale
+#   AGENT_NAMESPACE         (default: "default")
+#   AGENT_GRPC_PORT         (default: "50051")
+#   WARM_POOL_SIZE          (default: "1")
+#   SCALER_INTERVAL_SECONDS (default: "10")
+#   LISTEN_ADDR             (default: ":50050")
+ENTRYPOINT ["env-router"]

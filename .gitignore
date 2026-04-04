@@ -1,0 +1,14 @@
+# Binaries
+**/bin/
+env-ebpf-agent/bin/
+env-router/bin/
+
+# Objects and eBPF artifacts
+*.o
+*.elf
+**/ebpf/*.o
+
+# Go artifacts
+*.test
+*.prof
+vendor/

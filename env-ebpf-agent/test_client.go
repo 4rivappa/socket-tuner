@@ -32,6 +32,15 @@ func main() {
 		log.Fatalf("Reset failed: %v", err)
 	}
 	fmt.Printf("Reset Success: %v, Response Message: %s\n", rResp.Success, rResp.Message)
+	if rResp.InitialObservation != nil {
+		fmt.Printf("\n--- BASELINE METRICS ---\n")
+		fmt.Printf("Remote IP:   %s:%d\n", rResp.InitialObservation.RemoteIp, rResp.InitialObservation.RemotePort)
+		fmt.Printf("Bytes Sent:  %d\n", rResp.InitialObservation.BytesSent)
+		fmt.Printf("Bytes Recv:  %d\n", rResp.InitialObservation.BytesReceived)
+		fmt.Printf("SRTT:        %d us\n", rResp.InitialObservation.SrttUs)
+		fmt.Printf("Duration:    %d us\n", rResp.InitialObservation.DurationUs)
+		fmt.Printf("------------------------\n")
+	}
 
 	time.Sleep(1 * time.Second)
 
@@ -43,6 +52,9 @@ func main() {
 		TargetPort:    80,
 		MaxPacingRate: 50 * 1024, // 50 KB/s pacing
 		SndCwndClamp:  0,
+		CongAlgo:      2, // BBR
+		InitCwnd:      20,
+		NoDelay:       1,
 	})
 	if err != nil {
 		log.Fatalf("Step failed: %v", err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	
+	"socket-tuner/env-ebpf-agent/ebpf"
 	"socket-tuner/env-ebpf-agent/internal/ebpfmgr"
 	"socket-tuner/env-ebpf-agent/internal/executor"
 	"socket-tuner/env-ebpf-agent/pkg/pb"
@@ -34,17 +35,48 @@ func (s *Server) Reset(ctx context.Context, req *pb.ResetRequest) (*pb.ResetResp
 		return &pb.ResetResponse{Success: false, Message: err.Error()}, nil
 	}
 
+	metric, ipStr, port, err := s.manager.GetLatestMetric()
+	var obs *pb.Observation
+	if err == nil && metric != nil {
+		obs = &pb.Observation{
+			RemoteIp:      ipStr,
+			RemotePort:    port,
+			SrttUs:        metric.SrttUs,
+			TotalRetrans:  metric.TotalRetrans,
+			BytesSent:     metric.BytesSent,
+			BytesReceived: metric.BytesReceived,
+			DurationUs:    metric.DurationUs,
+		}
+	} else {
+		log.Printf("Warning: failed to get latest metric after baseline run: %v", err)
+	}
+
 	return &pb.ResetResponse{
 		Success: true,
 		Message: "Environment reset. Baseline run complete.",
+		InitialObservation: obs,
 	}, nil
 }
 
 func (s *Server) Step(ctx context.Context, req *pb.StepRequest) (*pb.StepResponse, error) {
-	log.Printf("Received Step for IP %s:%d (MaxPacing: %d, CwndClamp: %d)", req.TargetIp, req.TargetPort, req.MaxPacingRate, req.SndCwndClamp)
+	log.Printf("Received Step for IP %s:%d", req.TargetIp, req.TargetPort)
 	
+	action := &ebpf.BpfTuningAction{
+		MaxPacingRate: req.MaxPacingRate,
+		SndCwndClamp:  req.SndCwndClamp,
+		CongAlgo:      req.CongAlgo,
+		InitCwnd:      req.InitCwnd,
+		WindowClamp:   req.WindowClamp,
+		NoDelay:       req.NoDelay,
+		RtoMin:        req.RtoMin,
+		RetransAfter:  req.RetransAfter,
+		EnableEcn:     uint8(req.EnableEcn),
+		PacingStatus:  uint8(req.PacingStatus),
+		KeepaliveIdle: req.KeepaliveIdle,
+	}
+
 	// 1. Install RL tuning action into eBPF maps
-	if err := s.manager.SetAction(req.TargetIp, req.TargetPort, req.MaxPacingRate, req.SndCwndClamp); err != nil {
+	if err := s.manager.SetAction(req.TargetIp, req.TargetPort, action); err != nil {
 		log.Printf("Failed to set action: %v", err)
 		return nil, err
 	}

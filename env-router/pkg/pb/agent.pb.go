@@ -67,12 +67,13 @@ func (x *ResetRequest) GetCommand() string {
 }
 
 type ResetResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	SessionId     string                 `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Success            bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message            string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	SessionId          string                 `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	InitialObservation *Observation           `protobuf:"bytes,4,opt,name=initial_observation,json=initialObservation,proto3" json:"initial_observation,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ResetResponse) Reset() {
@@ -126,6 +127,13 @@ func (x *ResetResponse) GetSessionId() string {
 	return ""
 }
 
+func (x *ResetResponse) GetInitialObservation() *Observation {
+	if x != nil {
+		return x.InitialObservation
+	}
+	return nil
+}
+
 type StepRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -136,6 +144,15 @@ type StepRequest struct {
 	// Action variables from RL model
 	MaxPacingRate uint32 `protobuf:"varint,4,opt,name=max_pacing_rate,json=maxPacingRate,proto3" json:"max_pacing_rate,omitempty"` // pacing rate in bytes per second
 	SndCwndClamp  uint32 `protobuf:"varint,5,opt,name=snd_cwnd_clamp,json=sndCwndClamp,proto3" json:"snd_cwnd_clamp,omitempty"`    // congestion window clamp
+	CongAlgo      uint32 `protobuf:"varint,6,opt,name=cong_algo,json=congAlgo,proto3" json:"cong_algo,omitempty"`
+	InitCwnd      uint32 `protobuf:"varint,7,opt,name=init_cwnd,json=initCwnd,proto3" json:"init_cwnd,omitempty"`
+	WindowClamp   uint32 `protobuf:"varint,8,opt,name=window_clamp,json=windowClamp,proto3" json:"window_clamp,omitempty"`
+	NoDelay       uint32 `protobuf:"varint,9,opt,name=no_delay,json=noDelay,proto3" json:"no_delay,omitempty"`
+	RtoMin        uint32 `protobuf:"varint,10,opt,name=rto_min,json=rtoMin,proto3" json:"rto_min,omitempty"`
+	RetransAfter  uint32 `protobuf:"varint,11,opt,name=retrans_after,json=retransAfter,proto3" json:"retrans_after,omitempty"`
+	EnableEcn     uint32 `protobuf:"varint,12,opt,name=enable_ecn,json=enableEcn,proto3" json:"enable_ecn,omitempty"`
+	PacingStatus  uint32 `protobuf:"varint,13,opt,name=pacing_status,json=pacingStatus,proto3" json:"pacing_status,omitempty"`
+	KeepaliveIdle uint32 `protobuf:"varint,14,opt,name=keepalive_idle,json=keepaliveIdle,proto3" json:"keepalive_idle,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -205,6 +222,69 @@ func (x *StepRequest) GetSndCwndClamp() uint32 {
 	return 0
 }
 
+func (x *StepRequest) GetCongAlgo() uint32 {
+	if x != nil {
+		return x.CongAlgo
+	}
+	return 0
+}
+
+func (x *StepRequest) GetInitCwnd() uint32 {
+	if x != nil {
+		return x.InitCwnd
+	}
+	return 0
+}
+
+func (x *StepRequest) GetWindowClamp() uint32 {
+	if x != nil {
+		return x.WindowClamp
+	}
+	return 0
+}
+
+func (x *StepRequest) GetNoDelay() uint32 {
+	if x != nil {
+		return x.NoDelay
+	}
+	return 0
+}
+
+func (x *StepRequest) GetRtoMin() uint32 {
+	if x != nil {
+		return x.RtoMin
+	}
+	return 0
+}
+
+func (x *StepRequest) GetRetransAfter() uint32 {
+	if x != nil {
+		return x.RetransAfter
+	}
+	return 0
+}
+
+func (x *StepRequest) GetEnableEcn() uint32 {
+	if x != nil {
+		return x.EnableEcn
+	}
+	return 0
+}
+
+func (x *StepRequest) GetPacingStatus() uint32 {
+	if x != nil {
+		return x.PacingStatus
+	}
+	return 0
+}
+
+func (x *StepRequest) GetKeepaliveIdle() uint32 {
+	if x != nil {
+		return x.KeepaliveIdle
+	}
+	return 0
+}
+
 type StepResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// True if the network command has completed
@@ -268,6 +348,7 @@ type Observation struct {
 	TotalRetrans  uint32 `protobuf:"varint,5,opt,name=total_retrans,json=totalRetrans,proto3" json:"total_retrans,omitempty"`    // Total retransmissions
 	BytesSent     uint64 `protobuf:"varint,6,opt,name=bytes_sent,json=bytesSent,proto3" json:"bytes_sent,omitempty"`             // Total bytes sent
 	BytesReceived uint64 `protobuf:"varint,7,opt,name=bytes_received,json=bytesReceived,proto3" json:"bytes_received,omitempty"` // Total bytes received
+	DurationUs    uint64 `protobuf:"varint,8,opt,name=duration_us,json=durationUs,proto3" json:"duration_us,omitempty"`          // Connection duration in microseconds
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -351,18 +432,26 @@ func (x *Observation) GetBytesReceived() uint64 {
 	return 0
 }
 
+func (x *Observation) GetDurationUs() uint64 {
+	if x != nil {
+		return x.DurationUs
+	}
+	return 0
+}
+
 var File_agent_proto protoreflect.FileDescriptor
 
 const file_agent_proto_rawDesc = "" +
 	"\n" +
 	"\vagent.proto\x12\x05agent\"(\n" +
 	"\fResetRequest\x12\x18\n" +
-	"\acommand\x18\x01 \x01(\tR\acommand\"b\n" +
+	"\acommand\x18\x01 \x01(\tR\acommand\"\xa7\x01\n" +
 	"\rResetResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x03 \x01(\tR\tsessionId\"\xb8\x01\n" +
+	"session_id\x18\x03 \x01(\tR\tsessionId\x12C\n" +
+	"\x13initial_observation\x18\x04 \x01(\v2\x12.agent.ObservationR\x12initialObservation\"\xd9\x03\n" +
 	"\vStepRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1b\n" +
@@ -370,10 +459,21 @@ const file_agent_proto_rawDesc = "" +
 	"\vtarget_port\x18\x03 \x01(\rR\n" +
 	"targetPort\x12&\n" +
 	"\x0fmax_pacing_rate\x18\x04 \x01(\rR\rmaxPacingRate\x12$\n" +
-	"\x0esnd_cwnd_clamp\x18\x05 \x01(\rR\fsndCwndClamp\"X\n" +
+	"\x0esnd_cwnd_clamp\x18\x05 \x01(\rR\fsndCwndClamp\x12\x1b\n" +
+	"\tcong_algo\x18\x06 \x01(\rR\bcongAlgo\x12\x1b\n" +
+	"\tinit_cwnd\x18\a \x01(\rR\binitCwnd\x12!\n" +
+	"\fwindow_clamp\x18\b \x01(\rR\vwindowClamp\x12\x19\n" +
+	"\bno_delay\x18\t \x01(\rR\anoDelay\x12\x17\n" +
+	"\arto_min\x18\n" +
+	" \x01(\rR\x06rtoMin\x12#\n" +
+	"\rretrans_after\x18\v \x01(\rR\fretransAfter\x12\x1d\n" +
+	"\n" +
+	"enable_ecn\x18\f \x01(\rR\tenableEcn\x12#\n" +
+	"\rpacing_status\x18\r \x01(\rR\fpacingStatus\x12%\n" +
+	"\x0ekeepalive_idle\x18\x0e \x01(\rR\rkeepaliveIdle\"X\n" +
 	"\fStepResponse\x12\x12\n" +
 	"\x04done\x18\x01 \x01(\bR\x04done\x124\n" +
-	"\vobservation\x18\x02 \x01(\v2\x12.agent.ObservationR\vobservation\"\xe8\x01\n" +
+	"\vobservation\x18\x02 \x01(\v2\x12.agent.ObservationR\vobservation\"\x89\x02\n" +
 	"\vObservation\x12\x1b\n" +
 	"\tremote_ip\x18\x01 \x01(\tR\bremoteIp\x12\x1f\n" +
 	"\vremote_port\x18\x02 \x01(\rR\n" +
@@ -383,7 +483,9 @@ const file_agent_proto_rawDesc = "" +
 	"\rtotal_retrans\x18\x05 \x01(\rR\ftotalRetrans\x12\x1d\n" +
 	"\n" +
 	"bytes_sent\x18\x06 \x01(\x04R\tbytesSent\x12%\n" +
-	"\x0ebytes_received\x18\a \x01(\x04R\rbytesReceived2o\n" +
+	"\x0ebytes_received\x18\a \x01(\x04R\rbytesReceived\x12\x1f\n" +
+	"\vduration_us\x18\b \x01(\x04R\n" +
+	"durationUs2o\n" +
 	"\bEnvAgent\x122\n" +
 	"\x05Reset\x12\x13.agent.ResetRequest\x1a\x14.agent.ResetResponse\x12/\n" +
 	"\x04Step\x12\x12.agent.StepRequest\x1a\x13.agent.StepResponseB#Z!socket-tuner/env-router/pkg/pb;pbb\x06proto3"
@@ -409,16 +511,17 @@ var file_agent_proto_goTypes = []any{
 	(*Observation)(nil),   // 4: agent.Observation
 }
 var file_agent_proto_depIdxs = []int32{
-	4, // 0: agent.StepResponse.observation:type_name -> agent.Observation
-	0, // 1: agent.EnvAgent.Reset:input_type -> agent.ResetRequest
-	2, // 2: agent.EnvAgent.Step:input_type -> agent.StepRequest
-	1, // 3: agent.EnvAgent.Reset:output_type -> agent.ResetResponse
-	3, // 4: agent.EnvAgent.Step:output_type -> agent.StepResponse
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	4, // 0: agent.ResetResponse.initial_observation:type_name -> agent.Observation
+	4, // 1: agent.StepResponse.observation:type_name -> agent.Observation
+	0, // 2: agent.EnvAgent.Reset:input_type -> agent.ResetRequest
+	2, // 3: agent.EnvAgent.Step:input_type -> agent.StepRequest
+	1, // 4: agent.EnvAgent.Reset:output_type -> agent.ResetResponse
+	3, // 5: agent.EnvAgent.Step:output_type -> agent.StepResponse
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_agent_proto_init() }

@@ -22,6 +22,16 @@ type BpfTuningAction struct {
 	_             structs.HostLayout
 	MaxPacingRate uint32
 	SndCwndClamp  uint32
+	CongAlgo      uint32
+	InitCwnd      uint32
+	WindowClamp   uint32
+	NoDelay       uint32
+	RtoMin        uint32
+	RetransAfter  uint32
+	EnableEcn     uint8
+	PacingStatus  uint8
+	_             [2]byte
+	KeepaliveIdle uint32
 }
 
 type BpfTuningMetrics struct {

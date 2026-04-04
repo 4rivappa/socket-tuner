@@ -16,10 +16,52 @@
 #define SO_MAX_PACING_RATE 47 // Defined in asm-generic/socket.h usually
 #endif
 
+#ifndef SOL_TCP
+#define SOL_TCP 6
+#endif
+
+#ifndef TCP_CONGESTION
+#define TCP_CONGESTION 13
+#endif
+
+#ifndef TCP_WINDOW_CLAMP
+#define TCP_WINDOW_CLAMP 10
+#endif
+
+#ifndef TCP_NODELAY
+#define TCP_NODELAY 1
+#endif
+
+#ifndef TCP_USER_TIMEOUT
+#define TCP_USER_TIMEOUT 18
+#endif
+
+#ifndef TCP_KEEPIDLE
+#define TCP_KEEPIDLE 4
+#endif
+
+#ifndef TCP_BPF_IW
+#define TCP_BPF_IW 1001
+#endif
+
+#ifndef TCP_BPF_SNDCWND_CLAMP
+#define TCP_BPF_SNDCWND_CLAMP 1002
+#endif
+
+
 // Action definition (Tuning parameters for a target socket)
 struct tuning_action {
     __u32 max_pacing_rate;
     __u32 snd_cwnd_clamp;
+    __u32 cong_algo;
+    __u32 init_cwnd;
+    __u32 window_clamp;
+    __u32 no_delay;
+    __u32 rto_min;
+    __u32 retrans_after;
+    __u8  enable_ecn;
+    __u8  pacing_status;
+    __u32 keepalive_idle;
 };
 
 // Observation/Metrics tracked over a socket connection
@@ -96,11 +138,47 @@ int bpf_sockmap(struct bpf_sock_ops *skops)
                 if (act->max_pacing_rate > 0) {
                     bpf_setsockopt(skops, SOL_SOCKET, SO_MAX_PACING_RATE, &act->max_pacing_rate, sizeof(act->max_pacing_rate));
                 }
+                
+                if (act->snd_cwnd_clamp > 0) {
+                    bpf_setsockopt(skops, SOL_TCP, TCP_BPF_SNDCWND_CLAMP, &act->snd_cwnd_clamp, sizeof(act->snd_cwnd_clamp));
+                }
 
-                struct tuning_metrics initial = {};
-                initial.start_time_ns = bpf_ktime_get_ns();
-                bpf_map_update_elem(&metrics_map, &key, &initial, BPF_ANY);
+                if (act->cong_algo > 0) {
+                    if (act->cong_algo == 1) {
+                        char cc[16] = "cubic";
+                        bpf_setsockopt(skops, SOL_TCP, TCP_CONGESTION, cc, sizeof(cc));
+                    } else if (act->cong_algo == 2) {
+                        char cc[16] = "bbr";
+                        bpf_setsockopt(skops, SOL_TCP, TCP_CONGESTION, cc, sizeof(cc));
+                    }
+                }
+
+                if (act->init_cwnd > 0) {
+                    bpf_setsockopt(skops, SOL_TCP, TCP_BPF_IW, &act->init_cwnd, sizeof(act->init_cwnd));
+                }
+
+                if (act->window_clamp > 0) {
+                    bpf_setsockopt(skops, SOL_TCP, TCP_WINDOW_CLAMP, &act->window_clamp, sizeof(act->window_clamp));
+                }
+
+                if (act->no_delay > 0) {
+                    bpf_setsockopt(skops, SOL_TCP, TCP_NODELAY, &act->no_delay, sizeof(act->no_delay));
+                }
+
+                if (act->retrans_after > 0) {
+                    bpf_setsockopt(skops, SOL_TCP, TCP_USER_TIMEOUT, &act->retrans_after, sizeof(act->retrans_after));
+                }
+
+                if (act->keepalive_idle > 0) {
+                    bpf_setsockopt(skops, SOL_TCP, TCP_KEEPIDLE, &act->keepalive_idle, sizeof(act->keepalive_idle));
+                }
             }
+
+            // Always track metrics to capture baselines as well
+            struct tuning_metrics initial = {};
+            initial.start_time_ns = bpf_ktime_get_ns();
+            bpf_map_update_elem(&metrics_map, &key, &initial, BPF_ANY);
+            
             // Enable callbacks for state changes (e.g. TCP close) to grab final stats
             bpf_sock_ops_cb_flags_set(skops, skops->bpf_sock_ops_cb_flags | BPF_SOCK_OPS_STATE_CB_FLAG);
             break;

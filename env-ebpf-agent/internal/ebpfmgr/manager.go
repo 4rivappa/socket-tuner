@@ -66,18 +66,13 @@ func ipToKey(ipStr string, port uint32) (ebpf.BpfIpPortKey, error) {
 }
 
 // SetAction configures the eBPF map with the RL action parameters
-func (m *Manager) SetAction(ip string, port uint32, maxPacing uint32, cwndClamp uint32) error {
+func (m *Manager) SetAction(ip string, port uint32, action *ebpf.BpfTuningAction) error {
 	key, err := ipToKey(ip, port)
 	if err != nil {
 		return err
 	}
 
-	val := ebpf.BpfTuningAction{
-		MaxPacingRate: maxPacing,
-		SndCwndClamp:  cwndClamp,
-	}
-
-	return m.objs.ActionMap.Put(key, val)
+	return m.objs.ActionMap.Put(key, action)
 }
 
 // GetMetrics retrieves the final metrics stored by the eBPF program
@@ -94,3 +89,37 @@ func (m *Manager) GetMetrics(ip string, port uint32) (*ebpf.BpfTuningMetrics, er
 
 	return &metrics, nil
 }
+
+// GetLatestMetric iterates through all metrics and returns the most recently updated one
+func (m *Manager) GetLatestMetric() (*ebpf.BpfTuningMetrics, string, uint32, error) {
+	var maxTime uint64
+	var latestMetric ebpf.BpfTuningMetrics
+	var latestKey ebpf.BpfIpPortKey
+	found := false
+
+	var key ebpf.BpfIpPortKey
+	var metric ebpf.BpfTuningMetrics
+	iter := m.objs.MetricsMap.Iterate()
+	for iter.Next(&key, &metric) {
+		if metric.StartTimeNs >= maxTime {
+			maxTime = metric.StartTimeNs
+			latestMetric = metric
+			latestKey = key
+			found = true
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return nil, "", 0, fmt.Errorf("failed to iterate metrics map: %w", err)
+	}
+
+	if !found {
+		return nil, "", 0, fmt.Errorf("no metrics found")
+	}
+
+	ipBytes := make([]byte, 4)
+	binary.LittleEndian.PutUint32(ipBytes, latestKey.Ip)
+	ipStr := net.IP(ipBytes).String()
+
+	return &latestMetric, ipStr, latestKey.Port, nil
+}
+

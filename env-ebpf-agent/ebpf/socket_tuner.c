@@ -151,7 +151,9 @@ int bpf_sockmap(struct bpf_sock_ops *skops)
             struct tuning_metrics initial = {};
             initial.start_time_ns = bpf_ktime_get_ns();
             initial.remote_ip = skops->remote_ip4;
-            initial.remote_port = skops->remote_port; 
+            // The remote_port is often provided in the upper 16 bits of the __u32 field in NBO.
+            // bswap32 (ntohl) correctly shifts it to the lower 16 bits.
+            initial.remote_port = __builtin_bswap32(skops->remote_port); 
             bpf_map_update_elem(&metrics_map, &pid, &initial, BPF_ANY);
             break;
         }

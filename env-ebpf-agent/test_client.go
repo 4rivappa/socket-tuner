@@ -24,7 +24,7 @@ func main() {
 	// Execute an arbitrary network command
 	fmt.Println("=== 1. Resetting Environment ===")
 	rResp, err := client.Reset(context.Background(), &pb.ResetRequest{
-		// Command: "curl -sI -m 5 https://google.com",
+		// Command: "curl -sI -m 5 http://google.com",
 		// Command: "curl -o /dev/null https://ash-speed.hetzner.com/1GB.bin",
 		Command: "curl -o /dev/null https://github.com/torvalds/linux/archive/refs/tags/v7.0-rc6.tar.gz",
 		// Command: "git clone --depth=0 https://github.com/kubernetes/kubernetes.git",

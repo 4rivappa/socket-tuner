@@ -1,0 +1,30 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: socket-tuner
+  region: us-east-1
+  version: "1.32"
+
+vpc:
+  cidr: 10.0.0.0/16
+  nat:
+    gateway: Single
+
+managedNodeGroups:
+  - name: system-nodes
+    instanceType: t3.medium
+    minSize: 2
+    maxSize: 2
+    desiredCapacity: 2
+    privateNetworking: true
+    amiFamily: AmazonLinux2023
+    labels:
+      role: system
+    tags:
+      karpenter.sh/discovery: socket-tuner
+
+addons:
+  - name: coredns
+  - name: kube-proxy
+  - name: vpc-cni

@@ -1,5 +1,5 @@
 # --- BUILD STAGE ---
-FROM golang:1.22-bullseye AS builder
+FROM golang:1.25-bookworm AS builder
 
 # Install necessary build tools for eBPF and gRPC compilation
 RUN apt-get update && apt-get install -y \
@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
     libbpf-dev
 
 # Install required Go protocol buffer plugins
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
-    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11 && \
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.1
 
 WORKDIR /app
 

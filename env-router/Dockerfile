@@ -1,12 +1,12 @@
 # --- BUILD STAGE ---
-FROM golang:1.22-bullseye AS builder
+FROM golang:1.25-bookworm AS builder
 
 RUN apt-get update && apt-get install -y \
     protobuf-compiler \
     make
 
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
-    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11 && \
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.1
 
 WORKDIR /app
 

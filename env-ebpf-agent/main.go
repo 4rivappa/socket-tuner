@@ -18,7 +18,7 @@ import (
 
 func main() {
 	cgroupPath := flag.String("cgroup", "/sys/fs/cgroup", "Path to cgroup v2 for sockops attachment")
-	listenAddr := flag.String("listen", ":50051", "gRPC listen address")
+	listenAddr := flag.String("listen", ":50061", "gRPC listen address")
 	flag.Parse()
 
 	// 1. Initialize Executor

@@ -43,7 +43,7 @@ WORKDIR /app
 COPY --from=builder /app/bin/env-ebpf-agent /usr/local/bin/
 
 # Expose gRPC port
-EXPOSE 50051
+EXPOSE 50061
 
 # Requires privileged execution in Kubernetes to attach to /sys/fs/cgroup
-ENTRYPOINT ["env-ebpf-agent", "-listen", ":50051", "-cgroup", "/sys/fs/cgroup"]
+ENTRYPOINT ["env-ebpf-agent", "-listen", ":50061", "-cgroup", "/sys/fs/cgroup"]

@@ -23,6 +23,11 @@ spec:
     spec:
       hostNetwork: true
       serviceAccountName: agents-sa
+      tolerations:
+        - key: "socket-tuner/agent"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
       nodeSelector:
         instance: env-agent-node
       affinity:
@@ -38,7 +43,7 @@ spec:
           imagePullPolicy: Always
           ports:
             - name: grpc
-              containerPort: 50051
+              containerPort: 50061
               protocol: TCP
           securityContext:
             privileged: true
@@ -61,12 +66,12 @@ spec:
               memory: "1Gi"
           readinessProbe:
             tcpSocket:
-              port: 50051
+              port: 50061
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             tcpSocket:
-              port: 50051
+              port: 50061
             initialDelaySeconds: 20
             periodSeconds: 20
       volumes:
@@ -92,6 +97,6 @@ spec:
     app: agents
   ports:
     - name: grpc
-      port: 50051
-      targetPort: 50051
+      port: 50061
+      targetPort: 50061
       protocol: TCP

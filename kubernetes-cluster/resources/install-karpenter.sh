@@ -31,3 +31,8 @@ kubectl create -f \
 kubectl create -f \
     "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.sh_nodeclaims.yaml"
 kubectl apply -f karpenter.yaml
+
+## Next Steps ##
+
+# 1. Update aws-auth configmap in kube-system namespace to have Karpenter role with system bootstrap and node permissions.
+# alias nodes='kubectl get nodes -o custom-columns="NAME:.metadata.name,STATUS:.status.conditions[?(@.type==\"Ready\")].status,CAPACITY-TYPE:.metadata.labels.karpenter\.sh/capacity-type,NODEPOOL:.metadata.labels.karpenter\.sh/nodepool,INSTANCE-TYPE:.metadata.labels.node\.kubernetes\.io/instance-type,ZONE:.metadata.labels.topology\.kubernetes\.io/zone,AGE:.metadata.creationTimestamp"'

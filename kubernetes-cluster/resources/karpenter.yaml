@@ -48,6 +48,10 @@ spec:
         group: karpenter.k8s.aws
         kind: EC2NodeClass
         name: env-agents
+      taints:
+        - key: socket-tuner/agent
+          value: "true"
+          effect: NoSchedule
       expireAfter: 240h
       requirements:
         - key: kubernetes.io/arch
@@ -60,3 +64,34 @@ spec:
           operator: In
           values:
             - t3.micro
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: general
+spec:
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 5m
+  limits:
+    cpu: "4"
+  template:
+    metadata:
+      labels:
+        instance: general
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: env-agents
+      expireAfter: 720h
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["t3.medium"]

@@ -51,7 +51,7 @@ spec:
         eks.amazonaws.com/nodegroup: default-system-nodes
       containers:
         - name: env-router
-          image: 786221173676.dkr.ecr.us-east-1.amazonaws.com/socket-tuner-env-router:prod-safeguard-0.1.0
+          image: 786221173676.dkr.ecr.us-east-1.amazonaws.com/socket-tuner-env-router:prod-safeguard-0.1.1
           imagePullPolicy: Always
           ports:
             - name: grpc
@@ -65,7 +65,7 @@ spec:
             - name: AGENT_DEPLOYMENT_NAME
               value: "agents"
             - name: AGENT_GRPC_PORT
-              value: "50051"
+              value: "50061"
             - name: WARM_POOL_SIZE
               value: "1"
             - name: SCALER_INTERVAL_SECONDS

@@ -77,13 +77,8 @@ func (as *AutoScaler) reconcile(ctx context.Context) {
 	}
 	currentReplicas := int(scale.Spec.Replicas)
 
-	deficit := as.warmPoolSize - freeCount
-
-	if deficit == 0 {
-		return // perfectly balanced
-	}
-
-	desiredReplicas := currentReplicas + deficit
+	busyCount := totalCount - freeCount
+	desiredReplicas := busyCount + as.warmPoolSize
 	if desiredReplicas < 1 {
 		desiredReplicas = 1 // never scale to zero
 	}

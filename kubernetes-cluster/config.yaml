@@ -4,7 +4,7 @@ kind: ClusterConfig
 metadata:
   name: socket-tuner
   region: us-east-1
-  version: "1.32"
+  version: "1.34"
 
 vpc:
   cidr: 10.0.0.0/16
@@ -13,10 +13,10 @@ vpc:
 
 managedNodeGroups:
   - name: system-nodes
-    instanceType: t3.medium
-    minSize: 2
-    maxSize: 2
-    desiredCapacity: 2
+    instanceType: t3.small
+    minSize: 1
+    maxSize: 1
+    desiredCapacity: 1
     privateNetworking: true
     amiFamily: AmazonLinux2023
     labels:

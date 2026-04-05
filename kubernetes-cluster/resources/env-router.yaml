@@ -3,9 +3,6 @@ kind: ServiceAccount
 metadata:
   name: router-sa
   namespace: socket-tuner
-  annotations:
-    # NEED TO CREATE IAM ROLES FOR BELOW USECASE
-    eks.amazonaws.com/role-arn: arn:aws:iam::<ACCOUNT_ID>:role/socket-tuner-env-router
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -49,18 +46,12 @@ spec:
       labels:
         app: router
     spec:
-      serviceAccountName: router
+      serviceAccountName: router-sa
       nodeSelector:
-        role: system
-      tolerations:
-        - key: CriticalAddonsOnly
-          operator: Exists
-          effect: NoSchedule
-
+        eks.amazonaws.com/nodegroup: default-system-nodes
       containers:
         - name: env-router
-          # Replace <ACCOUNT_ID> and <REGION> with your values
-          image: <ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/socket-tuner/env-router:latest
+          image: 786221173676.dkr.ecr.us-east-1.amazonaws.com/socket-tuner-env-router:prod-safeguard-0.1.0
           imagePullPolicy: Always
           ports:
             - name: grpc

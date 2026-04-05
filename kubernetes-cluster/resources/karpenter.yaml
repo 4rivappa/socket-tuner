@@ -5,17 +5,14 @@ metadata:
 spec:
   amiFamily: AL2023
   amiSelectorTerms:
-    - id: ami-038307b5108a3e3dd
+    - id: ami-0a3271c34f36aa212
   subnetSelectorTerms:
     - tags:
-        karpenter.sh/discovery: socket-tuner
-  
-  # NEED TO UPDATE BELOW TWO PARAMETERS
+        alpha.eksctl.io/cluster-name: socket-tuner
   role: KarpenterNodeRole-socket-tuner
   securityGroupSelectorTerms:
     - tags:
-        karpenter.sh/discovery: socket-tuner
-
+        kubernetes.io/cluster/socket-tuner: owned
   blockDeviceMappings:
     - deviceName: /dev/xvda
       ebs:
@@ -23,7 +20,7 @@ spec:
         volumeType: gp3
         encrypted: true
         deleteOnTermination: true
-        snapshotID: snap-04e9a2c7e7af1aeee
+        snapshotID: snap-0b7d5980eb82e5497
   metadataOptions:
     httpEndpoint: enabled
     httpProtocolIPv6: disabled
@@ -51,7 +48,7 @@ spec:
         group: karpenter.k8s.aws
         kind: EC2NodeClass
         name: env-agents
-      expireAfter: 30d
+      expireAfter: 240h
       requirements:
         - key: kubernetes.io/arch
           operator: In

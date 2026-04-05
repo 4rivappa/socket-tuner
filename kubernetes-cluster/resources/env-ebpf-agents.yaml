@@ -21,6 +21,7 @@ spec:
       labels:
         app: agents
     spec:
+      hostNetwork: true
       serviceAccountName: agents-sa
       nodeSelector:
         instance: env-agent-node
@@ -33,14 +34,12 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
         - name: env-ebpf-agent
-          # Replace <ACCOUNT_ID> and <REGION> with your values
-          image: <ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/socket-tuner/env-ebpf-agent:latest
+          image: 786221173676.dkr.ecr.us-east-1.amazonaws.com/socket-tuner-env-ebpf-agent:prod-safeguard-0.1.0
           imagePullPolicy: Always
           ports:
             - name: grpc
               containerPort: 50051
               protocol: TCP
-          hostNetwork: true
           securityContext:
             privileged: true
             capabilities:

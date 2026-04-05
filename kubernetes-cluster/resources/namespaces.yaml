@@ -2,8 +2,3 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: socket-tuner
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: karpenter

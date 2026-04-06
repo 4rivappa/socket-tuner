@@ -96,7 +96,7 @@ func (s *Server) Step(ctx context.Context, req *pb.StepRequest) (*pb.StepRespons
 	}
 	
 	return &pb.StepResponse{
-		Done: true,
+		Done: false,
 		Observation: &pb.Observation{
 			RemoteIp:      ipStr,
 			RemotePort:    port,

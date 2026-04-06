@@ -36,3 +36,5 @@ kubectl apply -f karpenter.yaml
 
 # 1. Update aws-auth configmap in kube-system namespace to have Karpenter role with system bootstrap and node permissions.
 # alias nodes='kubectl get nodes -o custom-columns="NAME:.metadata.name,STATUS:.status.conditions[?(@.type==\"Ready\")].status,CAPACITY-TYPE:.metadata.labels.karpenter\.sh/capacity-type,NODEPOOL:.metadata.labels.karpenter\.sh/nodepool,INSTANCE-TYPE:.metadata.labels.node\.kubernetes\.io/instance-type,ZONE:.metadata.labels.topology\.kubernetes\.io/zone,AGE:.metadata.creationTimestamp"'
+
+## Reference: https://karpenter.sh/docs/getting-started/migrating-from-cas/

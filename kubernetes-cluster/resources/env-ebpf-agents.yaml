@@ -22,6 +22,7 @@ spec:
         app: agents
     spec:
       hostNetwork: true
+      hostPID: true
       serviceAccountName: agents-sa
       tolerations:
         - key: "socket-tuner/agent"

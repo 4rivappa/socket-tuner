@@ -1,0 +1,13 @@
+# NLB: socket-tuner-env-router-d3490d2d14c591e6.elb.us-east-1.amazonaws.com
+# ARN: arn:aws:elasticloadbalancing:us-east-1:786221173676:loadbalancer/net/socket-tuner-env-router/d3490d2d14c591e6
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: router-service-binding
+  namespace: socket-tuner
+spec:
+  targetType: ip
+  targetGroupARN: arn:aws:elasticloadbalancing:us-east-1:786221173676:targetgroup/socket-tuner-env-router-tg/660d1f6317125ec1
+  serviceRef:
+    name: router-service
+    port: 50050

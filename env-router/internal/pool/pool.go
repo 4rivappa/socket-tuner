@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -16,6 +17,7 @@ type AgentClient struct {
 	Conn           *grpc.ClientConn
 	Client         pb.EnvAgentClient
 	Busy           bool
+	LastActivity   time.Time
 	pendingRemoval bool // marked for cleanup after episode ends
 }
 
@@ -53,8 +55,9 @@ func (p *Pool) AddAgent(addr string) error {
 	p.agents[addr] = &AgentClient{
 		Addr:   addr,
 		Conn:   conn,
-		Client: pb.NewEnvAgentClient(conn),
-		Busy:   false,
+		Client:       pb.NewEnvAgentClient(conn),
+		Busy:         false,
+		LastActivity: time.Now(),
 	}
 	log.Printf("[pool] Added agent %s (total: %d)", addr, len(p.agents))
 	return nil
@@ -90,6 +93,7 @@ func (p *Pool) LockFreeAgent() (*AgentClient, error) {
 	for _, ac := range p.agents {
 		if !ac.Busy && !ac.pendingRemoval {
 			ac.Busy = true
+			ac.LastActivity = time.Now()
 			return ac, nil
 		}
 	}
@@ -112,6 +116,35 @@ func (p *Pool) FreeAgent(addr string) {
 		ac.Conn.Close()
 		delete(p.agents, addr)
 		log.Printf("[pool] Deferred removal completed for agent %s (total: %d)", addr, len(p.agents))
+	}
+}
+
+// TouchAgent updates the last activity timestamp for an agent.
+func (p *Pool) TouchAgent(addr string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if ac, exists := p.agents[addr]; exists {
+		ac.LastActivity = time.Now()
+	}
+}
+
+// CleanupStaleAgents finds busy agents that haven't had activity for 'timeout'
+// and releases them back to the pool.
+func (p *Pool) CleanupStaleAgents(timeout time.Duration) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for addr, ac := range p.agents {
+		if ac.Busy && time.Since(ac.LastActivity) > timeout {
+			log.Printf("[pool] Timing out stale session on %s (inactive for %v)", addr, time.Since(ac.LastActivity))
+			ac.Busy = false
+			if ac.pendingRemoval {
+				ac.Conn.Close()
+				delete(p.agents, addr)
+				log.Printf("[pool] Deferred removal completed for stale agent %s (total: %d)", addr, len(p.agents))
+			}
+		}
 	}
 }
 

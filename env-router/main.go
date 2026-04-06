@@ -48,6 +48,8 @@ func main() {
 	agentGRPCPort := envOrDefault("AGENT_GRPC_PORT", "50051")
 	warmPoolSize := envIntOrDefault("WARM_POOL_SIZE", 1)
 	scalerIntervalSec := envIntOrDefault("SCALER_INTERVAL_SECONDS", 10)
+	sessionTimeoutSec := envIntOrDefault("SESSION_TIMEOUT_SECONDS", 300)
+	cleanupIntervalSec := envIntOrDefault("CLEANUP_INTERVAL_SECONDS", 60)
 
 	if agentServiceName == "" {
 		log.Fatal("AGENT_SERVICE_NAME environment variable is required")
@@ -56,8 +58,8 @@ func main() {
 		log.Fatal("AGENT_DEPLOYMENT_NAME environment variable is required")
 	}
 
-	log.Printf("Config: service=%s ns=%s deployment=%s port=%s warm=%d interval=%ds",
-		agentServiceName, agentNamespace, agentDeploymentName, agentGRPCPort, warmPoolSize, scalerIntervalSec)
+	log.Printf("Config: service=%s ns=%s deployment=%s port=%s warm=%d interval=%ds timeout=%ds cleanup=%ds",
+		agentServiceName, agentNamespace, agentDeploymentName, agentGRPCPort, warmPoolSize, scalerIntervalSec, sessionTimeoutSec, cleanupIntervalSec)
 
 	// ── Kubernetes client (in-cluster) ──
 	config, err := rest.InClusterConfig()
@@ -72,6 +74,16 @@ func main() {
 	// ── Dynamic agent pool ──
 	agentPool := pool.NewPool()
 	defer agentPool.Close()
+
+	// ── Start session timeout cleanup ──
+	go func() {
+		timeout := time.Duration(sessionTimeoutSec) * time.Second
+		cleanupTicker := time.NewTicker(time.Duration(cleanupIntervalSec) * time.Second)
+		defer cleanupTicker.Stop()
+		for range cleanupTicker.C {
+			agentPool.CleanupStaleAgents(timeout)
+		}
+	}()
 
 	// ── Start Kubernetes Endpoints watcher ──
 	watcher := k8sutil.NewEndpointWatcher(clientset, agentNamespace, agentServiceName, agentGRPCPort, agentPool)

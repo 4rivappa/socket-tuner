@@ -48,18 +48,22 @@ func main() {
 	dynamicIp := rResp.InitialObservation.RemoteIp
 	dynamicPort := rResp.InitialObservation.RemotePort
 
-	fmt.Println("\n=== 2. Stepping Environment (with strict eBPF Pacing Limit) ===")
-	// Assuming 100KB/s pacing rate
+	fmt.Println("\n=== 2. Stepping Environment (Applying Full eBPF Tuning) ===")
 	sResp, err := client.Step(context.Background(), &pb.StepRequest{
-		SessionId:     "test-session",
-		TargetIp:      dynamicIp,
-		TargetPort:    dynamicPort,
-		MaxPacingRate: 0,
-		SndCwndClamp:  0,
-		CongAlgo:      1, // Cubic
-		InitCwnd:      0,
-		WindowClamp:   33554432, // Large 32MB window
-		NoDelay:       0,
+		SessionId:      rResp.SessionId,
+		TargetIp:       dynamicIp,
+		TargetPort:     dynamicPort,
+		MaxPacingRate:  1000000,    // 1MB/s
+		SndCwndClamp:   100,        // Clamp to 100 segments
+		CongAlgo:       2,          // 2 for BBR (if supported by kernel)
+		InitCwnd:       20,         // Increase initial CWND to 20
+		WindowClamp:    16777216,   // 16MB window
+		NoDelay:        1,          // Disable Nagle
+		RtoMin:         200,        // 200ms min RTO
+		RetransAfter:   3,          // Retransmit after 3 duplicate ACKs
+		EnableEcn:      1,          // Enable ECN
+		PacingStatus:   1,          // Enable pacing
+		KeepaliveIdle:  7200,       // 2 hours idle
 	})
 	if err != nil {
 		log.Fatalf("Step failed: %v", err)

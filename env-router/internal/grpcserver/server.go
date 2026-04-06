@@ -31,6 +31,7 @@ func (s *Server) Reset(ctx context.Context, req *pb.ResetRequest) (*pb.ResetResp
 		return nil, err
 	}
 	log.Printf("Assigned new episode to agent on %s", agent.Addr)
+	s.agentPool.TouchAgent(agent.Addr)
 
 	// Forward the network scenario initialization
 	resp, err := agent.Client.Reset(ctx, req)
@@ -57,6 +58,7 @@ func (s *Server) Step(ctx context.Context, req *pb.StepRequest) (*pb.StepRespons
 		log.Printf("Step routing failed: %v", err)
 		return nil, err
 	}
+	s.agentPool.TouchAgent(req.SessionId)
 
 	// Forward step down
 	resp, err := agent.Client.Step(ctx, req)

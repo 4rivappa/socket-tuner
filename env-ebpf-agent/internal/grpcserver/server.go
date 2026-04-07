@@ -3,6 +3,7 @@ package grpcserver
 import (
 	"context"
 	"log"
+	"time"
 	
 	"socket-tuner/env-ebpf-agent/ebpf"
 	"socket-tuner/env-ebpf-agent/internal/ebpfmgr"
@@ -36,6 +37,8 @@ func (s *Server) Reset(ctx context.Context, req *pb.ResetRequest) (*pb.ResetResp
 		return &pb.ResetResponse{Success: false, Message: err.Error()}, nil
 	}
 
+	// Small delay to allow eBPF maps to synchronize after process exit
+	time.Sleep(100 * time.Millisecond)
 	metric, ipStr, port, err := s.manager.GetMetricForPid(pid)
 	var obs *pb.Observation
 	if err == nil && metric != nil {
@@ -89,6 +92,8 @@ func (s *Server) Step(ctx context.Context, req *pb.StepRequest) (*pb.StepRespons
 	}
 	
 	// 3. Collect the resulting BPF metrics
+	// Small delay to allow eBPF maps to synchronize after process exit
+	time.Sleep(100 * time.Millisecond)
 	metric, ipStr, port, err := s.manager.GetMetricForPid(pid)
 	if err != nil {
 		log.Printf("Failed to get metrics for PID %d: %v", pid, err)
@@ -108,3 +113,10 @@ func (s *Server) Step(ctx context.Context, req *pb.StepRequest) (*pb.StepRespons
 		},
 	}, nil
 }
+
+/*
+func (s *Server) Close(ctx context.Context, req *pb.CloseRequest) (*pb.CloseResponse, error) {
+	log.Printf("Received Close request for session %s. Periodic cleanup handled by router.", req.SessionId)
+	return &pb.CloseResponse{Success: true}, nil
+}
+*/

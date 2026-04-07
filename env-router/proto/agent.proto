@@ -10,6 +10,9 @@ service EnvAgent {
     
     // Take an action: apply eBPF socket tuning and return resulting metrics
     rpc Step (StepRequest) returns (StepResponse);
+
+    // Explicitly end the session and release the agent
+    rpc Close (CloseRequest) returns (CloseResponse);
 }
 
 message ResetRequest {
@@ -63,4 +66,12 @@ message Observation {
     uint64 bytes_sent = 6;     // Total bytes sent
     uint64 bytes_received = 7; // Total bytes received
     uint64 duration_us = 8;    // Connection duration in microseconds
+}
+
+message CloseRequest {
+    string session_id = 1;
+}
+
+message CloseResponse {
+    bool success = 1;
 }

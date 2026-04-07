@@ -74,3 +74,14 @@ func (s *Server) Step(ctx context.Context, req *pb.StepRequest) (*pb.StepRespons
 
 	return resp, nil
 }
+
+func (s *Server) Close(ctx context.Context, req *pb.CloseRequest) (*pb.CloseResponse, error) {
+	if req.SessionId == "" {
+		return nil, fmt.Errorf("missing session_id in Close Request")
+	}
+
+	log.Printf("Received explicit Close for %s. Releasing agent.", req.SessionId)
+	s.agentPool.FreeAgent(req.SessionId)
+
+	return &pb.CloseResponse{Success: true}, nil
+}

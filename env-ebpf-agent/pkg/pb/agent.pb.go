@@ -488,7 +488,7 @@ const file_agent_proto_rawDesc = "" +
 	"durationUs2o\n" +
 	"\bEnvAgent\x122\n" +
 	"\x05Reset\x12\x13.agent.ResetRequest\x1a\x14.agent.ResetResponse\x12/\n" +
-	"\x04Step\x12\x12.agent.StepRequest\x1a\x13.agent.StepResponseB'Z%socket-tuner/env-ebpf-agent/pkg/pb;pbb\x06proto3"
+	"\x04Step\x12\x12.agent.StepRequest\x1a\x13.agent.StepResponseB#Z!socket-tuner/env-router/pkg/pb;pbb\x06proto3"
 
 var (
 	file_agent_proto_rawDescOnce sync.Once

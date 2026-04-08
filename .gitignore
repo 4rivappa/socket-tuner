@@ -16,3 +16,7 @@ vendor/
 # Env
 **/.env
 .env
+
+# Test
+test/
+**/__pycache__/

@@ -51,7 +51,7 @@ spec:
         eks.amazonaws.com/nodegroup: default-system-nodes
       containers:
         - name: env-router
-          image: 786221173676.dkr.ecr.us-east-1.amazonaws.com/socket-tuner-env-router:prod-safeguard-0.1.1
+          image: 786221173676.dkr.ecr.us-east-1.amazonaws.com/socket-tuner-env-router:prod-safeguard-0.1.4
           imagePullPolicy: Always
           ports:
             - name: grpc
@@ -98,7 +98,7 @@ metadata:
   labels:
     app: router
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: router
   ports:

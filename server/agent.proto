@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package agent;
+
+option go_package = "socket-tuner/env-router/pkg/pb;pb";
+
+service EnvAgent {
+    // Reset the environment: prepare a new network command scenario
+    rpc Reset (ResetRequest) returns (ResetResponse);
+    
+    // Take an action: apply eBPF socket tuning and return resulting metrics
+    rpc Step (StepRequest) returns (StepResponse);
+}
+
+message ResetRequest {
+    // The network command to execute, e.g., "curl -sS https://example.com"
+    string command = 1;
+}
+
+message ResetResponse {
+    bool success = 1;
+    string message = 2;
+    string session_id = 3;
+    Observation initial_observation = 4;
+}
+
+message StepRequest {
+    string session_id = 1;
+    
+    // Target IP address (IPv4 as string for now, e.g. "93.184.216.34")
+    string target_ip = 2;
+    // Target Port
+    uint32 target_port = 3;
+
+    // Action variables from RL model
+    uint32 max_pacing_rate = 4; // pacing rate in bytes per second
+    uint32 snd_cwnd_clamp = 5;  // congestion window clamp
+    uint32 cong_algo = 6;
+    uint32 init_cwnd = 7;
+    uint32 window_clamp = 8;
+    uint32 no_delay = 9;
+    uint32 rto_min = 10;
+    uint32 retrans_after = 11;
+    uint32 enable_ecn = 12;
+    uint32 pacing_status = 13;
+    uint32 keepalive_idle = 14;
+}
+
+message StepResponse {
+    // True if the network command has completed
+    bool done = 1;
+    Observation observation = 2;
+}
+
+message Observation {
+    string remote_ip = 1;
+    uint32 remote_port = 2;
+    
+    // Metrics captured via eBPF
+    uint32 srtt_us = 3;        // Smoothed RTT in microseconds
+    uint32 mdev_us = 4;        // Mean deviation in microseconds
+    uint32 total_retrans = 5;  // Total retransmissions
+    uint64 bytes_sent = 6;     // Total bytes sent
+    uint64 bytes_received = 7; // Total bytes received
+    uint64 duration_us = 8;    // Connection duration in microseconds
+}

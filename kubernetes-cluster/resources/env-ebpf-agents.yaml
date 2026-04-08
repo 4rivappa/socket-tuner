@@ -40,7 +40,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
         - name: env-ebpf-agent
-          image: 786221173676.dkr.ecr.us-east-1.amazonaws.com/socket-tuner-env-ebpf-agent:prod-safeguard-0.1.0
+          image: 786221173676.dkr.ecr.us-east-1.amazonaws.com/socket-tuner-env-ebpf-agent:prod-safeguard-0.2.0
           imagePullPolicy: Always
           ports:
             - name: grpc

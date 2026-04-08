@@ -126,7 +126,9 @@ class SocketTunerEnvironment(Environment):
                     self._target_port = obs.remote_port
                     
                     if self._baseline_duration == 0:
-                        logger.warning(f"Reset attempt {attempt+1}: Baseline duration is 0. Metrics might be unavailable.")
+                        logger.warning(f"Reset attempt {attempt+1}: Baseline duration is 0 for task {current_task['name']}. Metrics might be unavailable.")
+                    else:
+                        logger.info(f"Task {current_task['name']} baseline duration: {self._baseline_duration} us")
                     
                     break # Success
                 else:

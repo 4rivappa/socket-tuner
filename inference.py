@@ -11,9 +11,9 @@ MANDATORY
 
 - Defaults are set only for API_BASE_URL and MODEL_NAME 
     (and should reflect your active inference setup):
-    API_BASE_URL = os.getenv("API_BASE_URL", "<your-active-endpoint>")
-    MODEL_NAME = os.getenv("MODEL_NAME", "<your-active-model>")
-    
+    API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+    MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-Coder-7B-Instruct")
+    LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME") # Alternative for local docker testing
 - The inference script must be named `inference.py` and placed in the root directory of the project
 - Participants must use OpenAI Client for all LLM calls using above variables
 
@@ -35,23 +35,23 @@ STDOUT FORMAT
     - Each tasks should return score in [0, 1]
 """
 
+import asyncio
 import json
 import os
 import textwrap
-import time
 from typing import List, Optional, Dict
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from client import SocketTunerEnv
 from models import LLMSocketTunerAction, LLMSocketTunerObservation
 
-IMAGE_NAME = os.getenv("IMAGE_NAME") # If you are using docker image 
+# Configuration
+IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME") or os.getenv("IMAGE_NAME") 
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 
 API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
 MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-Coder-7B-Instruct"
-# MODEL_NAME = os.getenv("MODEL_NAME") or "meta-llama/Llama-3.1-8B-Instruct"
 
 TASK_NAME = os.getenv("TASK", "socket-tuner")
 BENCHMARK = os.getenv("BENCHMARK", "socket-tuning")
@@ -137,10 +137,10 @@ def build_user_prompt(step: int, last_obs: LLMSocketTunerObservation, last_rewar
     ).strip()
 
 
-def get_model_action(client: OpenAI, step: int, last_obs: LLMSocketTunerObservation, last_reward: float, history: List[str]) -> LLMSocketTunerAction:
+async def get_model_action(client: AsyncOpenAI, step: int, last_obs: LLMSocketTunerObservation, last_reward: float, history: List[str]) -> LLMSocketTunerAction:
     user_prompt = build_user_prompt(step, last_obs, last_reward, history)
     try:
-        completion = client.chat.completions.create(
+        completion = await client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -166,34 +166,38 @@ def get_model_action(client: OpenAI, step: int, last_obs: LLMSocketTunerObservat
         return fallback.to_ui_action()
 
 
-def main() -> None:
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+async def main() -> None:
+    client = AsyncOpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-    env_base = SocketTunerEnv.from_docker_image(IMAGE_NAME) if IMAGE_NAME else SocketTunerEnv(base_url="http://localhost:8000")
-    env = env_base.sync()
+    if IMAGE_NAME:
+        env_base = await SocketTunerEnv.from_docker_image(IMAGE_NAME)
+    else:
+        env_base = SocketTunerEnv(base_url="http://localhost:8000")
+    
+    env = env_base
 
     num_tasks = 3
     
-    for episode in range(1, num_tasks + 1):
-        log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
-        episode_history: List[Dict] = []
-        steps_taken = 0
-        ep_success = False
-        ep_score = 0.01
-        episode_rewards = []
+    async with env:
+        for episode in range(1, num_tasks + 1):
+            log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
+            episode_history: List[Dict] = []
+            steps_taken = 0
+            ep_success = False
+            ep_score = 0.01
+            episode_rewards = []
 
-        try:
-            with env:
+            try:
                 # Retry reset if agent is busy
                 max_retries = 3
                 result = None
                 for attempt in range(max_retries):
                     try:
-                        result = env.reset()
+                        result = await env.reset()
                         break
                     except Exception as e:
                         if "no free agents" in str(e).lower() and attempt < max_retries - 1:
-                            time.sleep(5)
+                            await asyncio.sleep(5)
                         else:
                             raise e
                 
@@ -203,8 +207,8 @@ def main() -> None:
                 
                 # Robustness: If the initial observation is empty, try one more reset to get a valid baseline target
                 if not last_obs.remote_ip:
-                    time.sleep(2)
-                    result = env.reset()
+                    await asyncio.sleep(2)
+                    result = await env.reset()
                     last_obs = result.observation
 
                 baseline_metrics = {
@@ -225,20 +229,20 @@ def main() -> None:
                     # For the history, we need a history of strings for the user prompt
                     history_for_prompt = [f"Step {h['step']}: {h['action']} -> {h['reward']:.2f}" for h in episode_history]
                     
-                    action = get_model_action(client, step, last_obs, 0.01 if not episode_history else episode_history[-1]["reward"], history_for_prompt)
+                    action = await get_model_action(client, step, last_obs, 0.01 if not episode_history else episode_history[-1]["reward"], history_for_prompt)
                     action_str = f"algo={action.cong_algo},init_cwnd={action.init_cwnd}"
 
                     # Robustness: Retry the step if we hit transient environment errors
                     max_step_retries = 3
                     for attempt in range(max_step_retries):
                         try:
-                            result = env.step(action)
+                            result = await env.step(action)
                             break
                         except Exception as e:
                             err_msg = str(e).lower()
                             is_transient = "no metric found" in err_msg or "invalid ipv4" in err_msg
                             if is_transient and attempt < max_step_retries - 1:
-                                time.sleep(2)
+                                await asyncio.sleep(2)
                                 continue
                             raise e
 
@@ -262,30 +266,31 @@ def main() -> None:
                     if done:
                         break
 
-            # Post-episode calculation
-            episode_rewards = [h["reward"] for h in episode_history]
-            ep_score = sum(episode_rewards) / MAX_TOTAL_REWARD
-            ep_score = round(min(max(ep_score, 0.01), 0.99), 3)
-            ep_success = ep_score >= SUCCESS_SCORE_THRESHOLD
+                # Post-episode calculation
+                episode_rewards = [h["reward"] for h in episode_history]
+                ep_score = sum(episode_rewards) / MAX_TOTAL_REWARD
+                ep_score = round(min(max(ep_score, 0.01), 0.99), 3)
+                ep_success = ep_score >= SUCCESS_SCORE_THRESHOLD
 
-        except Exception as e:
-            # Calculate what we can if an exception occurred
-            episode_rewards = [h.get("reward", 0.01) for h in episode_history]
-            ep_score = sum(episode_rewards) / MAX_TOTAL_REWARD
-            ep_score = round(min(max(ep_score, 0.01), 0.99), 3)
-            ep_success = ep_score >= SUCCESS_SCORE_THRESHOLD
-            # We don't re-raise here to allow subsequent episodes to run
-            # but we should probably log the error in some way or just let log_end handle it
-            pass
-        finally:
-            log_end(success=ep_success, steps=len(episode_rewards), score=ep_score, rewards=episode_rewards)
+            except Exception as e:
+                # Calculate what we can if an exception occurred
+                episode_rewards = [h.get("reward", 0.01) for h in episode_history]
+                ep_score = sum(episode_rewards) / MAX_TOTAL_REWARD
+                ep_score = round(min(max(ep_score, 0.01), 0.99), 3)
+                ep_success = ep_score >= SUCCESS_SCORE_THRESHOLD
+                # We don't re-raise here to allow subsequent episodes to run
+                # but we should probably log the error in some way or just let log_end handle it
+                pass
+            finally:
+                log_end(success=ep_success, steps=len(episode_rewards), score=ep_score, rewards=episode_rewards)
 
     # Final cleanup
     try:
-        env.close()
+        await env.close()
     except:
         pass
 
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())

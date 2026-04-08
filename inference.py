@@ -41,7 +41,7 @@ import os
 import textwrap
 from typing import List, Optional, Dict
 
-from openai import AsyncOpenAI
+from openai import OpenAI
 
 from client import SocketTunerEnv
 from models import LLMSocketTunerAction, LLMSocketTunerObservation
@@ -52,6 +52,8 @@ API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 
 API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
 MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-Coder-7B-Instruct"
+
+ENV_URL      = os.environ.get("ENV_URL", "https://arivappa68-socket-tuner.hf.space")
 
 TASK_NAME = os.getenv("TASK", "socket-tuner")
 BENCHMARK = os.getenv("BENCHMARK", "socket-tuning")
@@ -137,10 +139,12 @@ def build_user_prompt(step: int, last_obs: LLMSocketTunerObservation, last_rewar
     ).strip()
 
 
-async def get_model_action(client: AsyncOpenAI, step: int, last_obs: LLMSocketTunerObservation, last_reward: float, history: List[str]) -> LLMSocketTunerAction:
+async def get_model_action(client: OpenAI, step: int, last_obs: LLMSocketTunerObservation, last_reward: float, history: List[str]) -> LLMSocketTunerAction:
     user_prompt = build_user_prompt(step, last_obs, last_reward, history)
     try:
-        completion = await client.chat.completions.create(
+        # Wrap the synchronous OpenAI call in a thread to keep the event loop non-blocking
+        completion = await asyncio.to_thread(
+            client.chat.completions.create,
             model=MODEL_NAME,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -167,14 +171,14 @@ async def get_model_action(client: AsyncOpenAI, step: int, last_obs: LLMSocketTu
 
 
 async def main() -> None:
-    client = AsyncOpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-    if IMAGE_NAME:
-        env_base = await SocketTunerEnv.from_docker_image(IMAGE_NAME)
-    else:
-        env_base = SocketTunerEnv(base_url="http://localhost:8000")
+    # if IMAGE_NAME:
+    #     env_base = await SocketTunerEnv.from_docker_image(IMAGE_NAME)
+    # else:
+    #     env_base = SocketTunerEnv(base_url="http://localhost:8000")
     
-    env = env_base
+    env = SocketTunerEnv(base_url=ENV_URL)
 
     num_tasks = 3
     
@@ -204,7 +208,7 @@ async def main() -> None:
                 if not result:
                     continue
                 last_obs = result.observation
-                
+
                 # Robustness: If the initial observation is empty, try one more reset to get a valid baseline target
                 if not last_obs.remote_ip:
                     await asyncio.sleep(2)
@@ -284,13 +288,7 @@ async def main() -> None:
             finally:
                 log_end(success=ep_success, steps=len(episode_rewards), score=ep_score, rewards=episode_rewards)
 
-    # Final cleanup
-    try:
-        await env.close()
-    except:
-        pass
 
 
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(main())

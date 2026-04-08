@@ -12,3 +12,7 @@ env-router/bin/
 *.test
 *.prof
 vendor/
+
+# Env
+**/.env
+.env

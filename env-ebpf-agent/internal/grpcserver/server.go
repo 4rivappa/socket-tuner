@@ -28,7 +28,10 @@ func NewServer(m *ebpfmgr.Manager, e *executor.Executor) *Server {
 func (s *Server) Reset(ctx context.Context, req *pb.ResetRequest) (*pb.ResetResponse, error) {
 	log.Printf("Received Reset with command: %s", req.Command)
 	
-	s.executor.SetCommand(req.Command)
+	if err := s.executor.SetCommand(req.Command); err != nil {
+		log.Printf("Unauthorized command rejected: %v", err)
+		return &pb.ResetResponse{Success: false, Message: err.Error()}, nil
+	}
 	
 	// Execute it once as a baseline without specific eBPF parameters.
 	pid, err := s.executor.Run(ctx)

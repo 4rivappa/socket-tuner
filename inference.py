@@ -38,6 +38,7 @@ STDOUT FORMAT
 import json
 import os
 import textwrap
+import time
 from typing import List, Optional, Dict
 
 from openai import OpenAI
@@ -138,7 +139,6 @@ def build_user_prompt(step: int, last_obs: LLMSocketTunerObservation, last_rewar
 
 def get_model_action(client: OpenAI, step: int, last_obs: LLMSocketTunerObservation, last_reward: float, history: List[str]) -> LLMSocketTunerAction:
     user_prompt = build_user_prompt(step, last_obs, last_reward, history)
-    print(f"\n[DEBUG] --- LLM Prompt (Step {step}) ---\n{user_prompt}\n[DEBUG] --------------------------", flush=True)
     try:
         completion = client.chat.completions.create(
             model=MODEL_NAME,
@@ -151,14 +151,12 @@ def get_model_action(client: OpenAI, step: int, last_obs: LLMSocketTunerObservat
             response_format={"type": "json_object"},
         )
         text = (completion.choices[0].message.content or "").strip()
-        print(f"[DEBUG] Raw LLM Response: {text}", flush=True)
         data = json.loads(text)
         action = LLMSocketTunerAction(**data)
         
         # Use the UI action which excludes target IP/port (managed by the environment server)
         return action.to_ui_action()
     except Exception as exc:
-        print(f"[DEBUG] Model request failed or parsing failed: {exc}", flush=True)
         # Fallback config
         fallback = LLMSocketTunerAction(
             cong_algo="cubic",
@@ -174,18 +172,17 @@ def main() -> None:
     env_base = SocketTunerEnv.from_docker_image(IMAGE_NAME) if IMAGE_NAME else SocketTunerEnv(base_url="http://localhost:8000")
     env = env_base.sync()
 
-    all_rewards = []
     num_tasks = 3
-    success = False
-    score = 0.0
     
-    log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
+    for episode in range(1, num_tasks + 1):
+        log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
+        episode_history: List[Dict] = []
+        steps_taken = 0
+        ep_success = False
+        ep_score = 0.01
+        episode_rewards = []
 
-    try:
-        for episode in range(1, num_tasks + 1):
-            episode_history: List[Dict] = []
-            steps_taken = 0
-            
+        try:
             with env:
                 # Retry reset if agent is busy
                 max_retries = 3
@@ -196,8 +193,6 @@ def main() -> None:
                         break
                     except Exception as e:
                         if "no free agents" in str(e).lower() and attempt < max_retries - 1:
-                            print(f"[DEBUG] Agents busy, retrying in 5s... (Attempt {attempt+1}/{max_retries})")
-                            import time
                             time.sleep(5)
                         else:
                             raise e
@@ -208,8 +203,6 @@ def main() -> None:
                 
                 # Robustness: If the initial observation is empty, try one more reset to get a valid baseline target
                 if not last_obs.remote_ip:
-                    print("[DEBUG] Initial observation empty, re-resetting to find target...", flush=True)
-                    import time
                     time.sleep(2)
                     result = env.reset()
                     last_obs = result.observation
@@ -224,7 +217,6 @@ def main() -> None:
                     "task_description": last_obs.metadata.get("task_description", "No description"),
                     "difficulty": last_obs.metadata.get("difficulty", "Unknown")
                 }
-                print(f"\n--- Starting Episode {episode}/{num_tasks}: {task_info['task_name']} ---")
 
                 for step in range(1, MAX_STEPS + 1):
                     if result.done:
@@ -233,7 +225,7 @@ def main() -> None:
                     # For the history, we need a history of strings for the user prompt
                     history_for_prompt = [f"Step {h['step']}: {h['action']} -> {h['reward']:.2f}" for h in episode_history]
                     
-                    action = get_model_action(client, step, last_obs, 0.0 if not episode_history else episode_history[-1]["reward"], history_for_prompt)
+                    action = get_model_action(client, step, last_obs, 0.01 if not episode_history else episode_history[-1]["reward"], history_for_prompt)
                     action_str = f"algo={action.cong_algo},init_cwnd={action.init_cwnd}"
 
                     # Robustness: Retry the step if we hit transient environment errors
@@ -246,8 +238,6 @@ def main() -> None:
                             err_msg = str(e).lower()
                             is_transient = "no metric found" in err_msg or "invalid ipv4" in err_msg
                             if is_transient and attempt < max_step_retries - 1:
-                                print(f"[DEBUG] Step failed (transient): {e}. Retrying {attempt+1}/{max_step_retries}...", flush=True)
-                                import time
                                 time.sleep(2)
                                 continue
                             raise e
@@ -255,7 +245,7 @@ def main() -> None:
                     last_obs = result.observation
 
                     # Basic online reward
-                    online_reward = result.reward or 0.0
+                    online_reward = result.reward if result.reward is not None else 0.01
                     done = result.done
                     error = None
 
@@ -272,23 +262,29 @@ def main() -> None:
                     if done:
                         break
 
-            # --- After Episode: Using Online Rewards ---
+            # Post-episode calculation
             episode_rewards = [h["reward"] for h in episode_history]
-            all_rewards.extend(episode_rewards)
-            avg_reward = sum(episode_rewards)/len(episode_rewards) if episode_rewards else 0
-            print(f"--- Episode Review: Avg Reward: {avg_reward:.2f} ---")
+            ep_score = sum(episode_rewards) / MAX_TOTAL_REWARD
+            ep_score = round(min(max(ep_score, 0.01), 0.99), 3)
+            ep_success = ep_score >= SUCCESS_SCORE_THRESHOLD
 
-        total_max_reward = num_tasks * MAX_TOTAL_REWARD
-        score = sum(all_rewards) / total_max_reward if total_max_reward > 0 else 0.0
-        score = min(max(score, 0.0), 1.0)
-        success = score >= SUCCESS_SCORE_THRESHOLD
-
-    finally:
-        try:
-            env.close()
         except Exception as e:
-            print(f"[DEBUG] env.close() error: {e}", flush=True)
-        log_end(success=success, steps=len(all_rewards), score=score, rewards=all_rewards)
+            # Calculate what we can if an exception occurred
+            episode_rewards = [h.get("reward", 0.01) for h in episode_history]
+            ep_score = sum(episode_rewards) / MAX_TOTAL_REWARD
+            ep_score = round(min(max(ep_score, 0.01), 0.99), 3)
+            ep_success = ep_score >= SUCCESS_SCORE_THRESHOLD
+            # We don't re-raise here to allow subsequent episodes to run
+            # but we should probably log the error in some way or just let log_end handle it
+            pass
+        finally:
+            log_end(success=ep_success, steps=len(episode_rewards), score=ep_score, rewards=episode_rewards)
+
+    # Final cleanup
+    try:
+        env.close()
+    except:
+        pass
 
 
 if __name__ == "__main__":

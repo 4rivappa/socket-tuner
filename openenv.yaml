@@ -1,5 +1,6 @@
 spec_version: 1
 name: socket_tuner
+description: RL gym for optimizing Linux TCP stack performance through eBPF-based socket tuning
 type: space
 runtime: fastapi
 app: server.app:app

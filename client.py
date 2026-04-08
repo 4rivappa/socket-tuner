@@ -70,7 +70,7 @@ class SocketTunerEnv(
         obs_data = payload.get("observation", {})
         
         # Merge reward and done status into the observation
-        reward = payload.get("reward", 0.0)
+        reward = payload.get("reward", 0.01)
         done = payload.get("done", False)
         
         observation = SocketTunerObservation(

@@ -159,7 +159,7 @@ class SocketTunerEnvironment(Environment):
             duration_us=obs.duration_us,
             session_id=self._session_id,
             done=False,
-            reward=0.0,
+            reward=0.01,
             metadata={
                 "task_name": current_task["name"],
                 "task_description": current_task["description"],
@@ -199,16 +199,20 @@ class SocketTunerEnvironment(Environment):
             response = self.stub.Step(req)
             obs = response.observation
             
-            reward = 0.0
+            reward = 0.01
             done_early = False
+            reduction = 0.0
             
             if self._baseline_duration > 0 and obs.duration_us > 0:
                 # Calculate percentage reduction in duration time
                 reduction = (self._baseline_duration - obs.duration_us) / self._baseline_duration
                 
-                # Any step which reduced time by >=25% gets >=0.5, >=50% gets 1.0 limits. Max is 1.0.
+                # Any step which reduced time by >=25% gets >=0.5. Max clamped to 0.99.
                 if reduction > 0:
-                    reward = min(1.0, reduction * 2.0)
+                    reward = reduction * 2.0
+                
+                # Ensure reward is between 0.01 and 0.99 and rounded to 2 decimal places
+                reward = round(max(0.01, min(0.99, reward)), 2)
                 
                 # If it achieves better performance than 50%, we stop early
                 if reduction >= 0.5:
@@ -238,7 +242,7 @@ class SocketTunerEnvironment(Environment):
                 metadata={
                     "step": self._state.step_count,
                     "baseline_duration": self._baseline_duration,
-                    "reduction": reduction if self._baseline_duration > 0 and obs.duration_us > 0 else 0.0
+                    "reduction": reduction
                 }
             )
         except grpc.RpcError as e:

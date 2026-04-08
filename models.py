@@ -159,7 +159,7 @@ class LLMSocketTunerObservation(Observation):
             bytes_received=obs.bytes_received,
             total_duration_ms=obs.duration_us / 1000.0,
             session_id=obs.session_id,
-            reward=getattr(obs, 'reward', 0.0),
+            reward=getattr(obs, 'reward', 0.01),
             done=getattr(obs, 'done', False),
             metadata=getattr(obs, 'metadata', {}),
         )
